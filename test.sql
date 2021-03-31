@@ -8,8 +8,7 @@ DROP TABLE Uzemi CASCADE CONSTRAINTS ;
 DROP TABLE Objednavka CASCADE CONSTRAINTS ;
 DROP TABLE R_Ucast_Na_Setkani CASCADE CONSTRAINTS;
 DROP TABLE R_Clen_Cinnost CASCADE CONSTRAINTS;
---TODO: u FK omezeni je lepe explicitne deklarovat ON DELETE na NO ACTION nebo SET DEFAULT, aby nedoslo ke smazani produktu pri mazani kategorie
---TODO: unique a default
+
 CREATE TABLE Don (
     Alias varchar(255) PRIMARY KEY,
     Jmeno varchar(255) NOT NULL ,
@@ -28,12 +27,12 @@ CREATE TABLE Uzemi(
     ID_uzemi int PRIMARY KEY ,
     Ulice varchar(255) NOT NULL ,
     Mesto varchar(255) NOT NULL ,
-    PSC number NOT NULL CHECK ( length(to_char(PSC)) = 5 ),
-    Rozloha int NOT NULL ,
+    PSC number(5) NOT NULL CHECK ( length(to_char(PSC)) = 5 ),
+    Rozloha int NOT NULL CHECK ( Rozloha > 0 ),
     GPS varchar(255) CHECK(REGEXP_LIKE(GPS, '^([0-9]|[1-8][0-9]|[9][0]) ([N]|[S]), ([0-9]|[1-9][0-9]|[1][0-7][0-9]|[1][8][0]) ([E]|[W])$')),
 
     Nazev_familie varchar(255) DEFAULT NULL,
-    CONSTRAINT Familie_uzemi_FK FOREIGN KEY (Nazev_familie) REFERENCES Familie(Nazev_familie),
+    CONSTRAINT Familie_uzemi_FK FOREIGN KEY (Nazev_familie) REFERENCES Familie(Nazev_familie) ON DELETE SET NULL,
     Spada_od DATE DEFAULT NULL,
     Spada_do DATE DEFAULT NULL
     --TODO: historie - spada pod od-do
@@ -42,26 +41,27 @@ CREATE TABLE Uzemi(
 CREATE TABLE Setkani_Donu(
   ID_setkani int PRIMARY KEY,
   Datum_cas DATE NOT NULL,
-  Misto varchar(255),
+  Misto varchar(255) NOT NULL,
   ID_uzemi int NOT NULL,
   CONSTRAINT Uzemi_FK FOREIGN KEY (ID_uzemi) REFERENCES Uzemi(ID_uzemi)
 );
 
 CREATE TABLE  R_Ucast_Na_Setkani(
-    Alias varchar(255) NOT NULL ,
-    ID_setkani int NOT NULL ,
-    CONSTRAINT Don_FK FOREIGN KEY (Alias) REFERENCES Don(Alias),
-    CONSTRAINT Setkani_FK FOREIGN KEY (ID_setkani) REFERENCES Setkani_Donu(ID_setkani)
+    Alias varchar(255),
+    ID_setkani int,
+    PRIMARY KEY (Alias, ID_setkani),
+    CONSTRAINT Don_FK FOREIGN KEY (Alias) REFERENCES Don(Alias) ON DELETE CASCADE, --TODO: check if Cascade is ok
+    CONSTRAINT Setkani_FK FOREIGN KEY (ID_setkani) REFERENCES Setkani_Donu(ID_setkani) ON DELETE CASCADE
 );
 
 CREATE TABLE Radovy_clen(
     ID_clena int PRIMARY KEY,
     Jmeno varchar(255) NOT NULL,
     Datum_narozeni varchar(255) NOT NULL ,
-    Datum_prijeti varchar(255),
+    Datum_prijeti varchar(255) DEFAULT CURRENT_DATE,
     Nazev_familie varchar(255) NOT NULL,
 
-    CONSTRAINT Familie_FK FOREIGN KEY (Nazev_familie) REFERENCES Familie(Nazev_familie),
+    CONSTRAINT Familie_FK FOREIGN KEY (Nazev_familie) REFERENCES Familie(Nazev_familie) ON DELETE CASCADE ,
     Role varchar(255) NOT NULL,
     Role_od DATE NOT NULL,
     Role_do DATE NOT NULL
@@ -70,16 +70,16 @@ CREATE TABLE Radovy_clen(
 CREATE TABLE Aliance(
   ID_aliance int PRIMARY KEY,
   Stav varchar(255) CHECK (Stav = 'aktivni' or Stav = 'pozastavena' or Stav = 'zrusena') NOT NULL ,
-  Datum_zalozeni DATE,
-  Datum_ukonceni DATE
+  Datum_zalozeni DATE DEFAULT CURRENT_DATE,
+  Datum_ukonceni DATE DEFAULT NULL
     --TODO: vztah aliance a familie
 );
 
 CREATE TABLE Kriminalni_cinnost(
     Jmeno_operace varchar(255) PRIMARY KEY ,
-    Doba_trvani varchar(255),
+    Doba_trvani varchar(255) NOT NULL,
     Stav varchar(255) CHECK (Stav = 'vykonana' or Stav = 'pozastavena' or Stav = 'zrusena' or Stav = 'v procesu') NOT NULL ,
-    Datum DATE,
+    Datum DATE DEFAULT CURRENT_DATE,
     Type varchar(255) NOT NULL CHECK ( Type = 'Vrazda' or Type = 'Ostatni operace' ),
     --Vrazda
     Obet varchar(255), --TODO:nemoze byt Don == CHECK
@@ -90,11 +90,11 @@ CREATE TABLE Kriminalni_cinnost(
     ID_aliance int,
     Nazev_familie varchar(255),
 
-    CONSTRAINT Vedouci_Aliance_FK FOREIGN KEY (ID_aliance) REFERENCES Aliance(ID_aliance),
-    CONSTRAINT Vedouci_Familie_FK FOREIGN KEY (Nazev_familie) REFERENCES Familie(Nazev_familie),
+    CONSTRAINT Vedouci_Aliance_FK FOREIGN KEY (ID_aliance) REFERENCES Aliance(ID_aliance) ON DELETE CASCADE ,
+    CONSTRAINT Vedouci_Familie_FK FOREIGN KEY (Nazev_familie) REFERENCES Familie(Nazev_familie) ON DELETE CASCADE ,
 
     ID_uzemi int NOT NULL,
-    CONSTRAINT Uzemi_Cinnost_FK FOREIGN KEY (ID_uzemi) REFERENCES Uzemi(ID_uzemi),
+    CONSTRAINT Uzemi_Cinnost_FK FOREIGN KEY (ID_uzemi) REFERENCES Uzemi(ID_uzemi) ON DELETE SET NULL,
 
     CHECK (
         ((ID_aliance is not NULL and Nazev_familie is NULL) or
@@ -105,22 +105,23 @@ CREATE TABLE Kriminalni_cinnost(
 );
 
 CREATE TABLE  R_Clen_Cinnost(
-    Jmeno_operace varchar(255) NOT NULL,
-    ID_clena int NOT NULL,
+    Jmeno_operace varchar(255),
+    ID_clena int,
+    PRIMARY KEY (Jmeno_operace, ID_clena),
     Role varchar(255) NOT NULL,
-    CONSTRAINT Clen_FK FOREIGN KEY (ID_clena) REFERENCES Radovy_clen(ID_clena),
-    CONSTRAINT Cinnost_FK FOREIGN KEY (Jmeno_operace) REFERENCES Kriminalni_cinnost(Jmeno_operace)
+    CONSTRAINT Clen_FK FOREIGN KEY (ID_clena) REFERENCES Radovy_clen(ID_clena) ON DELETE CASCADE ,
+    CONSTRAINT Cinnost_FK FOREIGN KEY (Jmeno_operace) REFERENCES Kriminalni_cinnost(Jmeno_operace) ON DELETE CASCADE
     --TODO: clen musi patrit do familie vedouci cinnost
 );
 
 CREATE TABLE Objednavka(
   ID_objednavky int PRIMARY KEY,
-  Datum DATE,
+  Datum DATE DEFAULT CURRENT_DATE,
   Stav varchar(255) CHECK (Stav = 'vykonana' or Stav = 'pozastavena' or Stav = 'zrusena' or Stav = 'v procesu') NOT NULL,
   Alias varchar(255) NOT NULL,
   Jmeno_operace varchar(255) NOT NULL, --TODO: trigger 'Type' musi byt 'Vrazda'
-  CONSTRAINT Vytvoril_FK FOREIGN KEY (Alias) REFERENCES Don(Alias),
-  CONSTRAINT Vrazda_FK FOREIGN KEY (Jmeno_operace) REFERENCES Kriminalni_cinnost(Jmeno_operace)
+  CONSTRAINT Vytvoril_FK FOREIGN KEY (Alias) REFERENCES Don(Alias) ON DELETE CASCADE ,
+  CONSTRAINT Vrazda_FK FOREIGN KEY (Jmeno_operace) REFERENCES Kriminalni_cinnost(Jmeno_operace) ON DELETE CASCADE
 );
 
 -------------------------------------------------------
