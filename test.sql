@@ -68,6 +68,7 @@ CREATE TABLE Radovy_clen(
     Jmeno varchar(255) NOT NULL,
     Prijmeni varchar(255) NOT NULL,
     Datum_narozeni DATE NOT NULL,
+    Datum_prijeti DATE NOT NULL,
     Nazev_familie varchar(255) NOT NULL,
     CONSTRAINT Familie_FK FOREIGN KEY (Nazev_familie) REFERENCES Familie(Nazev_familie) ON DELETE CASCADE
 );
@@ -197,14 +198,14 @@ INSERT INTO Setkani_Donu(ID_setkani, Datum_cas, Misto, ID_uzemi)
 VALUES (3, TO_DATE( '2021-09-17 19:00', 'YYYY-MM-DD HH24:MI' ), 'Salieriho bar', 3);
 
 
-INSERT INTO Radovy_clen(ID_clena, Jmeno, Prijmeni, Datum_narozeni, Nazev_familie)
-VALUES(1, 'Jozo', 'Popleta', TO_DATE( '1990-03-12', 'YYYY-MM-DD' ), 'Kolarovi');
-INSERT INTO Radovy_clen(ID_clena, Jmeno, Prijmeni, Datum_narozeni, Nazev_familie)
-VALUES(2, 'Jan', 'Spageta', TO_DATE( '2000-11-24', 'YYYY-MM-DD' ), 'Kolarovi');
-INSERT INTO Radovy_clen(ID_clena, Jmeno, Prijmeni, Datum_narozeni, Nazev_familie)
-VALUES(3, 'Hildegarda', 'Nugeta',TO_DATE( '1986-01-31', 'YYYY-MM-DD' ), 'Ruzickovi');
-INSERT INTO Radovy_clen(ID_clena, Jmeno, Prijmeni, Datum_narozeni, Nazev_familie)
-VALUES(4, 'Berta', 'Koketa', TO_DATE( '2000-02-15', 'YYYY-MM-DD' ), 'Jedlickovi');
+INSERT INTO Radovy_clen(ID_clena, Jmeno, Prijmeni, Datum_narozeni, Datum_prijeti, Nazev_familie)
+VALUES(1, 'Jozo', 'Popleta', TO_DATE( '1990-03-12', 'YYYY-MM-DD' ), TO_DATE( '2018-06-06', 'YYYY-MM-DD' ), 'Kolarovi');
+INSERT INTO Radovy_clen(ID_clena, Jmeno, Prijmeni, Datum_narozeni, Datum_prijeti, Nazev_familie)
+VALUES(2, 'Jan', 'Spageta', TO_DATE( '2000-11-24', 'YYYY-MM-DD' ), TO_DATE( '2020-07-06', 'YYYY-MM-DD' ), 'Kolarovi');
+INSERT INTO Radovy_clen(ID_clena, Jmeno, Prijmeni, Datum_narozeni, Datum_prijeti, Nazev_familie)
+VALUES(3, 'Hildegarda', 'Nugeta',TO_DATE( '1986-01-31', 'YYYY-MM-DD' ),TO_DATE( '2021-01-01', 'YYYY-MM-DD' ), 'Ruzickovi');
+INSERT INTO Radovy_clen(ID_clena, Jmeno, Prijmeni, Datum_narozeni, Datum_prijeti, Nazev_familie)
+VALUES(4, 'Berta', 'Koketa', TO_DATE( '2000-02-15', 'YYYY-MM-DD' ),TO_DATE( '2020-05-19', 'YYYY-MM-DD' ), 'Jedlickovi');
 
 
 INSERT INTO R_Clen_Role(ID_role, Role, Role_od, Role_do, ID_clena)
