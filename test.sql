@@ -1,3 +1,7 @@
+-- SQL skript pro vytvoření základních objektů schématu databáze
+-- Zadání: Mafie
+-- Autor: Natália MArková (xmarko20), Tereza Burianová (xburia28)
+
 DROP TABLE Don CASCADE CONSTRAINTS ;
 DROP TABLE Familie CASCADE CONSTRAINTS ;
 DROP TABLE Setkani_Donu CASCADE CONSTRAINTS ;
