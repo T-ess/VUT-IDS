@@ -243,6 +243,8 @@ VALUES('Operace Jarmila', '5 dni', 'v procesu', TO_DATE( '2020-06-14 23:00', 'YY
 
 INSERT INTO  Objednavka(ID_objednavky, Datum, Stav, Alias, Jmeno_operace)
 VALUES(1, TO_DATE( '2020-03-01 15:15', 'YYYY-MM-DD HH24:MI' ), 'prijata', 'Veduci','Zabitie Fera');
+INSERT INTO  Objednavka(ID_objednavky, Datum, Stav, Alias, Jmeno_operace)
+VALUES(2, TO_DATE( '2020-06-14 23:00', 'YYYY-MM-DD HH24:MI' ), 'prijata', 'Zabijak','Operace Jarmila');
 
 INSERT INTO  R_Ucast_Na_Setkani(Alias, ID_setkani)
 VALUES ('Veduci', 1);
@@ -268,3 +270,68 @@ VALUES ('Okradnutie Fera', 4, 'vykradeni Ferova domu');
 INSERT INTO R_Clen_Cinnost(jmeno_operace, id_clena, role)
 VALUES ('Operace Jarmila', 3, 'Novicok do gati');
 ------------------------------------------------------
+
+-- Select role Joza Poplety --
+-- spojeni dvou tabulek --
+SELECT
+    R.Role,
+    R.Role_od,
+    R.Role_do
+FROM Radovy_clen C, R_Clen_Role R
+WHERE C.Jmeno='Jozo' and C.Prijmeni='Popleta' and R.ID_clena=C.ID_clena;
+
+-- Select vsechny cleny Familie Kolarovi --
+-- spojeni dvou tabulek --
+SELECT
+    R.Jmeno,
+    R.Prijmeni
+FROM Familie F, Radovy_clen R
+WHERE R.Nazev_familie='Kolarovi' and R.Nazev_familie=F.Nazev_familie;
+
+-- Select vsechny vrazdy objednane Veducim --
+-- spojeni tri tabulek --
+SELECT
+    K.Jmeno_operace,
+    D.Alias,
+    O.ID_objednavky
+FROM Kriminalni_cinnost K, Objednavka O, Don D
+WHERE K.type='Vrazda' and O.Alias=D.Alias and D.Alias='Veduci' and O.Jmeno_operace=K.Jmeno_operace;
+
+-- Select jakou celkovou rozlohu maji uzemi, ktera v historii patrila jednotlivym Familiim --
+-- GROUP BY a agregacni funkce SUM --
+SELECT
+    S.Nazev_familie,
+    SUM(U.Rozloha) AS Celkova_rozloha
+FROM Uzemi U, R_Spada_Pod S
+WHERE S.ID_uzemi=U.ID_uzemi and S.Nazev_familie IS NOT NULL
+GROUP BY S.Nazev_familie;
+
+-- Select kolika setkani se jednotlivi Donove zucastnili --
+-- GROUP BY a agregacni funkce  COUNT --
+SELECT
+    D.Alias,
+    COUNT(U.ID_setkani) AS Pocet_setkani
+FROM R_Ucast_Na_Setkani U, Don D
+WHERE U.Alias=D.Alias
+GROUP BY D.Alias;
+
+-- Select clenu, kteri se zucastnili jen operace 'Zabitie Fera' --
+-- predikat EXISTS --
+SELECT C.*
+FROM Radovy_clen C, R_Clen_Cinnost R
+WHERE R.Jmeno_operace='Zabitie Fera' and C.ID_clena=R.ID_clena and
+NOT EXISTS (
+    SELECT *
+    FROM R_Clen_Cinnost R
+    WHERE R.Jmeno_operace<>'Zabitie Fera' and C.ID_clena=R.ID_clena
+    );
+
+-- Select setkani donu, ktera se konala na uzemich s rozlohou mensi nez 100 --
+-- predikat IN s vnorenym selectem --
+SELECT *
+FROM Setkani_Donu
+WHERE ID_uzemi IN (
+        SELECT ID_uzemi
+        FROM Uzemi
+        WHERE Rozloha<100
+    );
