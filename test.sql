@@ -2,6 +2,7 @@
 -- Zadání: Mafie
 -- Autor: Natália MArková (xmarko20), Tereza Burianová (xburia28)
 
+
 DROP TABLE Don CASCADE CONSTRAINTS ;
 DROP TABLE Familie CASCADE CONSTRAINTS ;
 DROP TABLE Setkani_Donu CASCADE CONSTRAINTS ;
@@ -14,6 +15,8 @@ DROP TABLE R_Ucast_Na_Setkani CASCADE CONSTRAINTS;
 DROP TABLE R_Clen_Cinnost CASCADE CONSTRAINTS;
 DROP TABLE R_Spada_Pod CASCADE CONSTRAINTS ;
 DROP TABLE R_Clen_Role CASCADE CONSTRAINTS ;
+DROP SEQUENCE uzemi_seq;
+DROP PROCEDURE vek_pri_prijeti;
 
 CREATE TABLE Don (
     Alias varchar(255) PRIMARY KEY,
@@ -155,6 +158,80 @@ CREATE TABLE Objednavka(
 );
 
 -------------------------------------------------------
+CREATE SEQUENCE uzemi_seq
+    START WITH 1
+    INCREMENT BY 1;
+CREATE OR REPLACE TRIGGER uzemi_id
+    BEFORE INSERT ON Uzemi
+    FOR EACH ROW
+    BEGIN
+        :NEW.ID_Uzemi := uzemi_seq.nextval;
+    END;
+/
+
+CREATE OR REPLACE TRIGGER familie_check
+    BEFORE INSERT OR UPDATE ON R_Clen_Cinnost
+    FOR EACH ROW
+    DECLARE
+        F_Cinnost VARCHAR2(255);
+        F_Clen VARCHAR2(255);
+    BEGIN
+        IF INSERTING THEN
+            SELECT Nazev_familie INTO F_Cinnost FROM Kriminalni_cinnost WHERE Kriminalni_cinnost.Jmeno_operace = :new.Jmeno_operace;
+            SELECT Nazev_familie INTO F_Clen FROM Radovy_clen WHERE Radovy_clen.ID_clena = :new.ID_clena;
+            IF F_Clen != F_Cinnost
+            THEN
+                RAISE_APPLICATION_ERROR(-20000, 'Tento radovy clen nepatri do Familie vedouci tuto cinnost.');
+            END IF;
+        END IF;
+    END;
+/
+
+CREATE OR REPLACE PROCEDURE vek_pri_prijeti AS
+    CURSOR clenove IS SELECT * FROM Radovy_clen;
+    Clen Radovy_clen%ROWTYPE;
+    rozdil INT;
+
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Vek clenu pri jejich prijeti do Familie:');
+        OPEN clenove;
+        LOOP
+            FETCH clenove INTO Clen;
+            EXIT WHEN clenove%NOTFOUND;
+            rozdil := EXTRACT(YEAR FROM Clen.Datum_prijeti) - EXTRACT(YEAR FROM Clen.datum_narozeni);
+            IF EXTRACT(MONTH FROM Clen.Datum_prijeti) < EXTRACT(MONTH FROM Clen.Datum_narozeni)
+            THEN
+                rozdil := rozdil - 1;
+            ELSIF (EXTRACT(MONTH FROM Clen.Datum_prijeti) = EXTRACT(MONTH FROM Clen.Datum_narozeni)) AND
+                  (EXTRACT(DAY FROM Clen.Datum_prijeti) < EXTRACT(DAY FROM Clen.Datum_narozeni))
+            THEN
+                rozdil := rozdil - 1;
+            END IF;
+            DBMS_OUTPUT.PUT_LINE('ID ' || Clen.ID_clena || ', ' || Clen.Jmeno || ' ' || Clen.Prijmeni || ' - ' || TO_CHAR(rozdil) || ' let');
+        END LOOP;
+    END;
+/
+
+CREATE OR REPLACE PROCEDURE statistika_ucasti_donu_na_setkani AS
+    CURSOR setkani IS SELECT * FROM Setkani_Donu;
+    setkani_ID NUMBER;
+    DECLARE
+        celkem_donu NUMBER := 0;
+        pocet_ucastniku NUMBER := 0;
+    BEGIN
+        SELECT COUNT(Alias) INTO celkem_donu FROM Don;
+        DBMS_OUTPUT.PUT_LINE('Percentualni ucast na setkanich Donu:');
+        OPEN setkani;
+        LOOP
+            FETCH setkani INTO setkani_ID;
+            EXIT WHEN setkani%NOTFOUND;
+            SELECT COUNT(ID_setkani) INTO pocet_ucastniku FROM R_Ucast_Na_Setkani WHERE ID_setkani = setkani_ID;
+            DBMS_OUTPUT.PUT_LINE('Setkani' || setkani_ID || ': ' || (pocet_ucastniku/celkem_donu*100));
+        END LOOP;
+    END;
+/
+
+-------------------------------------------------------
 
 INSERT INTO Don(Alias, Jmeno, Prijmeni, Datum_narozeni, Velikost_bot)
 VALUES ('Veduci', 'Jano', 'Jedlicka', TO_DATE( '1967-11-01', 'YYYY-MM-DD' ), 39);
@@ -172,12 +249,12 @@ INSERT INTO Familie(Nazev_familie, Pocet_clenu, Alias)
 VALUES ('Kolarovi', 130, 'Kvetinka');
 
 
-INSERT INTO Uzemi(ID_uzemi, Ulice, Mesto, PSC, Rozloha, GPS)
-VALUES(1, 'Sedmikraskova', 'Brno', 95501, 35, '34 N, 180 W');
-INSERT INTO Uzemi(ID_uzemi, Ulice, Mesto, PSC, Rozloha, GPS)
-VALUES (2, 'Pampeliskova', 'Cesky Krumlov', 45477, 64, '39 N, 120 W');
-INSERT INTO Uzemi(ID_uzemi, Ulice, Mesto, PSC, Rozloha, GPS)
-VALUES (3, 'Tulipanova', 'Sered', 25874, 112, '69 N, 69 E');
+INSERT INTO Uzemi(Ulice, Mesto, PSC, Rozloha, GPS)
+VALUES('Sedmikraskova', 'Brno', 95501, 35, '34 N, 180 W');
+INSERT INTO Uzemi(Ulice, Mesto, PSC, Rozloha, GPS)
+VALUES ('Pampeliskova', 'Cesky Krumlov', 45477, 64, '39 N, 120 W');
+INSERT INTO Uzemi(Ulice, Mesto, PSC, Rozloha, GPS)
+VALUES ('Tulipanova', 'Sered', 25874, 112, '69 N, 69 E');
 
 
 INSERT INTO R_Spada_Pod(ID_spada, ID_uzemi, Nazev_familie, Spada_od, Spada_do)
@@ -271,6 +348,7 @@ INSERT INTO R_Clen_Cinnost(jmeno_operace, id_clena, role)
 VALUES ('Operace Jarmila', 3, 'Novicok do gati');
 ------------------------------------------------------
 
+
 -- Select role Joza Poplety --
 -- spojeni dvou tabulek --
 SELECT
@@ -299,12 +377,14 @@ WHERE K.type='Vrazda' and O.Alias=D.Alias and D.Alias='Veduci' and O.Jmeno_opera
 
 -- Select jakou celkovou rozlohu maji uzemi, ktera v historii patrila jednotlivym Familiim --
 -- GROUP BY a agregacni funkce SUM --
-SELECT
-    S.Nazev_familie,
-    SUM(U.Rozloha) AS Celkova_rozloha
-FROM Uzemi U, R_Spada_Pod S
-WHERE S.ID_uzemi=U.ID_uzemi and S.Nazev_familie IS NOT NULL
-GROUP BY S.Nazev_familie;
+EXPLAIN PLAN FOR
+    SELECT
+        S.Nazev_familie,
+        SUM(U.Rozloha) AS Celkova_rozloha
+    FROM Uzemi U, R_Spada_Pod S
+    WHERE S.ID_uzemi=U.ID_uzemi and S.Nazev_familie IS NOT NULL
+    GROUP BY S.Nazev_familie;
+SELECT * FROM table (DBMS_XPLAN.DISPLAY);
 
 -- Select kolika setkani se jednotlivi Donove zucastnili --
 -- GROUP BY a agregacni funkce  COUNT --
@@ -335,3 +415,10 @@ WHERE ID_uzemi IN (
         FROM Uzemi
         WHERE Rozloha<100
     );
+
+BEGIN
+vek_pri_prijeti();
+END;
+BEGIN
+statistika_ucasti_donu_na_setkani();
+END;
