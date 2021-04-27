@@ -17,6 +17,7 @@ DROP TABLE R_Spada_Pod CASCADE CONSTRAINTS ;
 DROP TABLE R_Clen_Role CASCADE CONSTRAINTS ;
 DROP SEQUENCE uzemi_seq;
 DROP PROCEDURE vek_pri_prijeti;
+DROP PROCEDURE statistika_ucasti_donu_na_setkani;
 
 CREATE TABLE Don (
     Alias varchar(255) PRIMARY KEY,
@@ -119,16 +120,12 @@ CREATE TABLE Kriminalni_cinnost(
     Misto varchar(255),
     --Ostatni operace
     Druh varchar(255),
-
     ID_aliance int,
     Nazev_familie varchar(255),
-
     CONSTRAINT Vedouci_Aliance_FK FOREIGN KEY (ID_aliance) REFERENCES Aliance(ID_aliance) ON DELETE CASCADE ,
     CONSTRAINT Vedouci_Familie_FK FOREIGN KEY (Nazev_familie) REFERENCES Familie(Nazev_familie) ON DELETE CASCADE ,
-
     ID_uzemi int NOT NULL,
     CONSTRAINT Uzemi_Cinnost_FK FOREIGN KEY (ID_uzemi) REFERENCES Uzemi(ID_uzemi) ON DELETE SET NULL,
-
     CHECK (
         ((ID_aliance is not NULL and Nazev_familie is NULL) or
         (ID_aliance is NULL and Nazev_familie is not NULL)) and
@@ -202,8 +199,7 @@ CREATE OR REPLACE PROCEDURE vek_pri_prijeti AS
             IF EXTRACT(MONTH FROM Clen.Datum_prijeti) < EXTRACT(MONTH FROM Clen.Datum_narozeni)
             THEN
                 rozdil := rozdil - 1;
-            ELSIF (EXTRACT(MONTH FROM Clen.Datum_prijeti) = EXTRACT(MONTH FROM Clen.Datum_narozeni)) AND
-                  (EXTRACT(DAY FROM Clen.Datum_prijeti) < EXTRACT(DAY FROM Clen.Datum_narozeni))
+            ELSIF (EXTRACT(MONTH FROM Clen.Datum_prijeti) = EXTRACT(MONTH FROM Clen.Datum_narozeni)) AND (EXTRACT(DAY FROM Clen.Datum_prijeti) < EXTRACT(DAY FROM Clen.Datum_narozeni))
             THEN
                 rozdil := rozdil - 1;
             END IF;
@@ -214,19 +210,20 @@ CREATE OR REPLACE PROCEDURE vek_pri_prijeti AS
 
 CREATE OR REPLACE PROCEDURE statistika_ucasti_donu_na_setkani AS
     CURSOR setkani IS SELECT * FROM Setkani_Donu;
-    setkani_ID NUMBER;
-    DECLARE
-        celkem_donu NUMBER := 0;
-        pocet_ucastniku NUMBER := 0;
+    setkani_ID Setkani_Donu%ROWTYPE;
+    celkem_donu NUMBER;
+    pocet_ucastniku NUMBER;
+    vypocet NUMBER;
     BEGIN
-        SELECT COUNT(Alias) INTO celkem_donu FROM Don;
+        SELECT COUNT(*) INTO celkem_donu FROM Don;
         DBMS_OUTPUT.PUT_LINE('Percentualni ucast na setkanich Donu:');
         OPEN setkani;
         LOOP
             FETCH setkani INTO setkani_ID;
             EXIT WHEN setkani%NOTFOUND;
-            SELECT COUNT(ID_setkani) INTO pocet_ucastniku FROM R_Ucast_Na_Setkani WHERE ID_setkani = setkani_ID;
-            DBMS_OUTPUT.PUT_LINE('Setkani' || setkani_ID || ': ' || (pocet_ucastniku/celkem_donu*100));
+            SELECT COUNT(*) INTO pocet_ucastniku FROM R_Ucast_Na_Setkani WHERE ID_setkani = setkani_ID.ID_setkani;
+            vypocet := pocet_ucastniku/celkem_donu*100;
+            DBMS_OUTPUT.PUT_LINE('Setkani' || setkani_ID.ID_setkani || ': ' || TO_CHAR(vypocet));
         END LOOP;
     END;
 /
