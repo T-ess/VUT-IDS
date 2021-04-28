@@ -439,8 +439,8 @@ GRANT EXECUTE ON statistika_ucasti_donu_na_setkani TO XMARKO20;
 DROP VIEW clenove_Familie_Kolarovi;
 
 CREATE VIEW clenove_Familie_Kolarovi AS
-    SELECT ID_clena, Jmeno, Prijmeni
-    FROM XBURIA28.Radovy_clen
+    SELECT R.ID_clena, R.Jmeno, R.Prijmeni
+    FROM XBURIA28.Radovy_clen R
     WHERE NAZEV_FAMILIE = 'Kolarovi';
 
 DROP MATERIALIZED VIEW clenove_Familie_Kolarovi_mat;
@@ -469,6 +469,13 @@ SELECT * FROM table (DBMS_XPLAN.DISPLAY);
 -- Explain plan s indexem
 -- Select jakou celkovou rozlohu maji uzemi, ktera v historii patrila jednotlivym Familiim --
 -- GROUP BY a agregacni funkce SUM --
+
+DROP INDEX Uzemi_index;
+DROP INDEX Spada_pod_index;
+
+CREATE INDEX Uzemi_index ON Uzemi(ID_uzemi, Rozloha);
+CREATE INDEX Spada_pod_index ON R_Spada_Pod(ID_uzemi, Nazev_familie);
+
 EXPLAIN PLAN FOR
     SELECT
         S.Nazev_familie,
@@ -490,8 +497,9 @@ END;
 SELECT * FROM clenove_Familie_Kolarovi;
 SELECT * FROM clenove_Familie_Kolarovi_mat;
 
-INSERT INTO Radovy_clen(ID_clena, Jmeno, Prijmeni, Datum_narozeni, Datum_prijeti, Nazev_familie)
+INSERT INTO XBURIA28.RADOVY_CLEN(ID_clena, Jmeno, Prijmeni, Datum_narozeni, Datum_prijeti, Nazev_familie)
 VALUES(5, 'Klementina', 'Spagetova', TO_DATE( '1983-01-06', 'YYYY-MM-DD' ), TO_DATE( '2020-07-06', 'YYYY-MM-DD' ), 'Kolarovi');
+COMMIT;
 
 SELECT * FROM clenove_Familie_Kolarovi;
 SELECT * FROM clenove_Familie_Kolarovi_mat;
