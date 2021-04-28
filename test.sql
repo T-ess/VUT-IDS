@@ -18,8 +18,6 @@ DROP TABLE R_Clen_Role CASCADE CONSTRAINTS ;
 DROP SEQUENCE uzemi_seq;
 DROP PROCEDURE vek_pri_prijeti;
 DROP PROCEDURE statistika_ucasti_donu_na_setkani;
-DROP VIEW clenove_Familie_Kolarovi;
-DROP MATERIALIZED VIEW clenove_Familie_Kolarovi_mat;
 
 ----------------------------------------------------------------------------------
 -- Projekt 2 - vytvoreni tabulek
@@ -438,10 +436,14 @@ GRANT ALL ON Objednavka TO XMARKO20;
 GRANT EXECUTE ON vek_pri_prijeti TO XMARKO20;
 GRANT EXECUTE ON statistika_ucasti_donu_na_setkani TO XMARKO20;
 
+DROP VIEW clenove_Familie_Kolarovi;
+
 CREATE VIEW clenove_Familie_Kolarovi AS
-    SELECT (ID_clena, Jmeno, Prijmeni)
+    SELECT ID_clena, Jmeno, Prijmeni
     FROM XBURIA28.Radovy_clen
     WHERE NAZEV_FAMILIE = 'Kolarovi';
+
+DROP MATERIALIZED VIEW clenove_Familie_Kolarovi_mat;
 
 CREATE MATERIALIZED VIEW clenove_Familie_Kolarovi_mat
 REFRESH ON COMMIT AS
