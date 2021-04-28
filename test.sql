@@ -1,6 +1,6 @@
 -- SQL skript pro vytvoření základních objektů schématu databáze
 -- Zadání: Mafie
--- Autor: Natália MArková (xmarko20), Tereza Burianová (xburia28)
+-- Autor: Natália Marková (xmarko20), Tereza Burianová (xburia28)
 
 
 DROP TABLE Don CASCADE CONSTRAINTS ;
@@ -18,7 +18,12 @@ DROP TABLE R_Clen_Role CASCADE CONSTRAINTS ;
 DROP SEQUENCE uzemi_seq;
 DROP PROCEDURE vek_pri_prijeti;
 DROP PROCEDURE statistika_ucasti_donu_na_setkani;
+DROP VIEW clenove_Familie_Kolarovi;
+DROP MATERIALIZED VIEW clenove_Familie_Kolarovi_mat;
 
+----------------------------------------------------------------------------------
+-- Projekt 2 - vytvoreni tabulek
+----------------------------------------------------------------------------------
 CREATE TABLE Don (
     Alias varchar(255) PRIMARY KEY,
     Jmeno varchar(255) NOT NULL ,
@@ -109,6 +114,8 @@ CREATE TABLE Aliance(
     CONSTRAINT Familie2_FK FOREIGN KEY (Familie2) REFERENCES Familie(Nazev_familie) ON DELETE CASCADE
 );
 
+
+
 CREATE TABLE Kriminalni_cinnost(
     Jmeno_operace varchar(255) PRIMARY KEY ,
     Doba_trvani varchar(255) NOT NULL,
@@ -154,7 +161,9 @@ CREATE TABLE Objednavka(
     CONSTRAINT Vrazda_FK FOREIGN KEY (Jmeno_operace) REFERENCES Kriminalni_cinnost(Jmeno_operace) ON DELETE CASCADE
 );
 
--------------------------------------------------------
+----------------------------------------------------------------------------------
+-- Projekt 4 - vytvoreni triggeru, procedur
+----------------------------------------------------------------------------------
 CREATE SEQUENCE uzemi_seq
     START WITH 1
     INCREMENT BY 1;
@@ -185,10 +194,9 @@ CREATE OR REPLACE TRIGGER familie_check
 /
 
 CREATE OR REPLACE PROCEDURE vek_pri_prijeti AS
-    CURSOR clenove IS SELECT * FROM Radovy_clen;
-    Clen Radovy_clen%ROWTYPE;
-    rozdil INT;
-
+        CURSOR clenove IS SELECT * FROM Radovy_clen;
+        Clen Radovy_clen%ROWTYPE;
+        rozdil INT;
     BEGIN
         DBMS_OUTPUT.PUT_LINE('Vek clenu pri jejich prijeti do Familie:');
         OPEN clenove;
@@ -205,15 +213,18 @@ CREATE OR REPLACE PROCEDURE vek_pri_prijeti AS
             END IF;
             DBMS_OUTPUT.PUT_LINE('ID ' || Clen.ID_clena || ', ' || Clen.Jmeno || ' ' || Clen.Prijmeni || ' - ' || TO_CHAR(rozdil) || ' let');
         END LOOP;
+    EXCEPTION
+        WHEN others THEN
+         DBMS_OUTPUT.PUT_LINE('Error executing the vek_pri_prijeti procedure.');
     END;
 /
 
 CREATE OR REPLACE PROCEDURE statistika_ucasti_donu_na_setkani AS
-    CURSOR setkani IS SELECT * FROM Setkani_Donu;
-    setkani_ID Setkani_Donu%ROWTYPE;
-    celkem_donu NUMBER;
-    pocet_ucastniku NUMBER;
-    vypocet NUMBER;
+        CURSOR setkani IS SELECT * FROM Setkani_Donu;
+        setkani_ID Setkani_Donu%ROWTYPE;
+        celkem_donu NUMBER;
+        pocet_ucastniku NUMBER;
+        vypocet NUMBER;
     BEGIN
         SELECT COUNT(*) INTO celkem_donu FROM Don;
         DBMS_OUTPUT.PUT_LINE('Percentualni ucast na setkanich Donu:');
@@ -222,14 +233,18 @@ CREATE OR REPLACE PROCEDURE statistika_ucasti_donu_na_setkani AS
             FETCH setkani INTO setkani_ID;
             EXIT WHEN setkani%NOTFOUND;
             SELECT COUNT(*) INTO pocet_ucastniku FROM R_Ucast_Na_Setkani WHERE ID_setkani = setkani_ID.ID_setkani;
-            vypocet := pocet_ucastniku/celkem_donu*100;
-            DBMS_OUTPUT.PUT_LINE('Setkani' || setkani_ID.ID_setkani || ': ' || TO_CHAR(vypocet));
+            vypocet := ROUND(pocet_ucastniku/celkem_donu*100, 2);
+            DBMS_OUTPUT.PUT_LINE('Setkani ' || setkani_ID.ID_setkani || ': ' || TO_CHAR(vypocet) || ' %');
         END LOOP;
+    EXCEPTION
+        WHEN others THEN
+         DBMS_OUTPUT.PUT_LINE('Error executing the statistika_ucasti_donu_na_setkani procedure.');
     END;
 /
 
--------------------------------------------------------
-
+----------------------------------------------------------------------------------
+-- Projekt 2 - vlozeni vzorovych dat
+----------------------------------------------------------------------------------
 INSERT INTO Don(Alias, Jmeno, Prijmeni, Datum_narozeni, Velikost_bot)
 VALUES ('Veduci', 'Jano', 'Jedlicka', TO_DATE( '1967-11-01', 'YYYY-MM-DD' ), 39);
 INSERT INTO Don(Alias, Jmeno, Prijmeni, Datum_narozeni, Velikost_bot)
@@ -245,7 +260,7 @@ VALUES ('Ruzickovi', 130, 'Zabijak');
 INSERT INTO Familie(Nazev_familie, Pocet_clenu, Alias)
 VALUES ('Kolarovi', 130, 'Kvetinka');
 
-
+-- Projekt 4 - demonstrace triggeru na doplneni chybejicich ID
 INSERT INTO Uzemi(Ulice, Mesto, PSC, Rozloha, GPS)
 VALUES('Sedmikraskova', 'Brno', 95501, 35, '34 N, 180 W');
 INSERT INTO Uzemi(Ulice, Mesto, PSC, Rozloha, GPS)
@@ -333,8 +348,7 @@ VALUES ('Zabijak', 2);
 INSERT INTO  R_Ucast_Na_Setkani(Alias, ID_setkani)
 VALUES ('Kvetinka', 3);
 
-INSERT INTO R_Clen_Cinnost(jmeno_operace, id_clena, role)
-VALUES ('Zabitie Fera', 1, 'uklid tela ze sklepa');
+
 INSERT INTO R_Clen_Cinnost(jmeno_operace, id_clena, role)
 VALUES ('Zabitie Fera', 2, 'vrah');
 INSERT INTO R_Clen_Cinnost(jmeno_operace, id_clena, role)
@@ -343,8 +357,11 @@ INSERT INTO R_Clen_Cinnost(jmeno_operace, id_clena, role)
 VALUES ('Okradnutie Fera', 4, 'vykradeni Ferova domu');
 INSERT INTO R_Clen_Cinnost(jmeno_operace, id_clena, role)
 VALUES ('Operace Jarmila', 3, 'Novicok do gati');
-------------------------------------------------------
 
+
+----------------------------------------------------------------------------------
+-- Projekt 3 - vytvoreni selectu
+----------------------------------------------------------------------------------
 
 -- Select role Joza Poplety --
 -- spojeni dvou tabulek --
@@ -372,16 +389,6 @@ SELECT
 FROM Kriminalni_cinnost K, Objednavka O, Don D
 WHERE K.type='Vrazda' and O.Alias=D.Alias and D.Alias='Veduci' and O.Jmeno_operace=K.Jmeno_operace;
 
--- Select jakou celkovou rozlohu maji uzemi, ktera v historii patrila jednotlivym Familiim --
--- GROUP BY a agregacni funkce SUM --
-EXPLAIN PLAN FOR
-    SELECT
-        S.Nazev_familie,
-        SUM(U.Rozloha) AS Celkova_rozloha
-    FROM Uzemi U, R_Spada_Pod S
-    WHERE S.ID_uzemi=U.ID_uzemi and S.Nazev_familie IS NOT NULL
-    GROUP BY S.Nazev_familie;
-SELECT * FROM table (DBMS_XPLAN.DISPLAY);
 
 -- Select kolika setkani se jednotlivi Donove zucastnili --
 -- GROUP BY a agregacni funkce  COUNT --
@@ -412,10 +419,89 @@ WHERE ID_uzemi IN (
         FROM Uzemi
         WHERE Rozloha<100
     );
+----------------------------------------------------------------------------------
+-- Projekt 4 - prava pro druheho clena tymu
+----------------------------------------------------------------------------------
+GRANT ALL ON Don TO XMARKO20;
+GRANT ALL ON Familie TO XMARKO20;
+GRANT ALL ON Uzemi TO XMARKO20;
+GRANT ALL ON R_Spada_Pod TO XMARKO20;
+GRANT ALL ON Setkani_Donu TO XMARKO20;
+GRANT ALL ON R_Ucast_Na_Setkani TO XMARKO20;
+GRANT ALL ON Radovy_clen TO XMARKO20;
+GRANT ALL ON R_Clen_Role TO XMARKO20;
+GRANT ALL ON Aliance TO XMARKO20;
+GRANT ALL ON Kriminalni_cinnost TO XMARKO20;
+GRANT ALL ON R_Clen_Cinnost TO XMARKO20;
+GRANT ALL ON Objednavka TO XMARKO20;
 
+GRANT EXECUTE ON vek_pri_prijeti TO XMARKO20;
+GRANT EXECUTE ON statistika_ucasti_donu_na_setkani TO XMARKO20;
+
+CREATE VIEW clenove_Familie_Kolarovi AS
+    SELECT (ID_clena, Jmeno, Prijmeni)
+    FROM XBURIA28.Radovy_clen
+    WHERE NAZEV_FAMILIE = 'Kolarovi';
+
+CREATE MATERIALIZED VIEW clenove_Familie_Kolarovi_mat
+REFRESH ON COMMIT AS
+    SELECT ID_clena, Jmeno, Prijmeni
+    FROM XBURIA28.Radovy_clen
+    WHERE NAZEV_FAMILIE = 'Kolarovi';
+
+----------------------------------------------------------------------------------
+-- Projekt 4 - demonstrace
+----------------------------------------------------------------------------------
+-- Explain plan bez indexu
+-- Select jakou celkovou rozlohu maji uzemi, ktera v historii patrila jednotlivym Familiim --
+-- GROUP BY a agregacni funkce SUM --
+EXPLAIN PLAN FOR
+    SELECT
+        S.Nazev_familie,
+        SUM(U.Rozloha) AS Celkova_rozloha
+    FROM Uzemi U, R_Spada_Pod S
+    WHERE S.ID_uzemi=U.ID_uzemi and S.Nazev_familie IS NOT NULL
+    GROUP BY S.Nazev_familie;
+SELECT * FROM table (DBMS_XPLAN.DISPLAY);
+
+-- Explain plan s indexem
+-- Select jakou celkovou rozlohu maji uzemi, ktera v historii patrila jednotlivym Familiim --
+-- GROUP BY a agregacni funkce SUM --
+EXPLAIN PLAN FOR
+    SELECT
+        S.Nazev_familie,
+        SUM(U.Rozloha) AS Celkova_rozloha
+    FROM Uzemi U, R_Spada_Pod S
+    WHERE S.ID_uzemi=U.ID_uzemi and S.Nazev_familie IS NOT NULL
+    GROUP BY S.Nazev_familie;
+SELECT * FROM table (DBMS_XPLAN.DISPLAY);
+
+-- Volani procedur --
 BEGIN
 vek_pri_prijeti();
 END;
 BEGIN
 statistika_ucasti_donu_na_setkani();
 END;
+
+-- Pohled a materializovany pohled --
+SELECT * FROM clenove_Familie_Kolarovi;
+SELECT * FROM clenove_Familie_Kolarovi_mat;
+
+INSERT INTO Radovy_clen(ID_clena, Jmeno, Prijmeni, Datum_narozeni, Datum_prijeti, Nazev_familie)
+VALUES(5, 'Klementina', 'Spagetova', TO_DATE( '1983-01-06', 'YYYY-MM-DD' ), TO_DATE( '2020-07-06', 'YYYY-MM-DD' ), 'Kolarovi');
+
+SELECT * FROM clenove_Familie_Kolarovi;
+SELECT * FROM clenove_Familie_Kolarovi_mat;
+
+-- Demonstrace triggeru na doplneni chybejicich ID --
+SELECT * FROM Uzemi;
+
+-- Trigger - kontrola, zda clen vykonavajici kriminalni cinnost patri do dane Familie --
+-- Spravna hodnota --
+INSERT INTO R_Clen_Cinnost(jmeno_operace, id_clena, role)
+VALUES ('Zabitie Fera', 1, 'uklid tela ze sklepa');
+
+-- Nespravna hodnota - vyjimka --
+INSERT INTO R_Clen_Cinnost(jmeno_operace, id_clena, role)
+VALUES ('Zabitie Fera', 3, 'uklid tela ze sklepa');
